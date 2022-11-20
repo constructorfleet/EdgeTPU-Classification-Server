@@ -1,4 +1,4 @@
-FROM 3.8.15-bullseye
+FROM python:3.8.15-bullseye
 
 VOLUME /app
 VOLUME /config
