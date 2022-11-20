@@ -1,0 +1,2 @@
+--extra-index-url https://google-coral.github.io/py-repo/ pycoral~=2.0
+PyGObject~=3.42.2
