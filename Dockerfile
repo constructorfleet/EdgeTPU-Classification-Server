@@ -5,14 +5,16 @@ VOLUME /config
 VOLUME /models
 
 # Install coral dependencies \
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq \
+RUN echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | tee /etc/apt/sources.list.d/coral-edgetpu.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add - && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractiv apt-get install -yq \
+    gasket-dkms libedgetpu1-std gstreamer-1.0 \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-good \
     python3-gst-1.0 python3-gi gir1.2-gtk-3.0 \
     python3-cairo python3-cairo-dev libglib2.0-dev \
-    libgirepository1.0-dev libcairo2-dev
-
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -yq \
-    python3-pycoral
+    libgirepository1.0-dev libcairo2-dev python3-pycoral \
+    libedgetpu1-legacy-std
 
 WORKDIR /app
 
