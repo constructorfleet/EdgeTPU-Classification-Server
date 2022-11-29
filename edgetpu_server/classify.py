@@ -22,10 +22,12 @@ python3 classify.py --videosrc /dev/video1 --videofmt jpeg
 """
 
 import argparse
-import edgetpu_server.gstreamer
 import os
 import time
 
+# from cairosvg import svg2png
+
+import edgetpu_server.gstreamer as gstreamer
 from edgetpu_server.utils.svg import SVG
 from edgetpu_server.utils import avg_fps_counter
 from pycoral.utils.dataset import read_label_file
@@ -92,7 +94,9 @@ def run(args):
         for result in results:
             text_lines.append('score={:.2f}: {}'.format(result.score, labels.get(result.id, result.id)))
         print(' '.join(text_lines))
-        return generate_svg(src_size, text_lines)
+        svg_code = generate_svg(src_size, text_lines)
+        # svg2png(bytestring=svg_code, write_to='output.png')
+        return svg_code
 
     result = gstreamer.run_pipeline(user_callback,
                                     src_size=(640, 480),

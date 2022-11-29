@@ -31,10 +31,12 @@ python3 detect.py \
   --labels ${TEST_DATA}/coco_labels.txt
 """
 import argparse
-import gstreamer
 import os
 import time
 
+# from cairosvg import svg2png
+
+import edgetpu_server.gstreamer as gstreamer
 from edgetpu_server.utils.svg import SVG
 from edgetpu_server.utils import avg_fps_counter
 from pycoral.adapters.common import input_size
@@ -91,6 +93,10 @@ def main():
     args = parser.parse_args()
 
     print('Loading {} with {} labels.'.format(args.model, args.labels))
+    run(args)
+
+
+def run(args):
     interpreter = make_interpreter(args.model)
     interpreter.allocate_tensors()
     labels = read_label_file(args.labels)
@@ -111,13 +117,16 @@ def main():
             'FPS: {} fps'.format(round(next(fps_counter))),
         ]
         print(' '.join(text_lines))
-        return generate_svg(src_size, inference_box, objs, labels, text_lines)
+        svg_code = generate_svg(src_size, inference_box, objs, labels, text_lines)
+        # svg2png(bytestring=svg_code, write_to='output.png')
+        return svg_code
 
     result = gstreamer.run_pipeline(user_callback,
                                     src_size=(640, 480),
                                     appsink_size=inference_size,
                                     videosrc=args.videosrc,
-                                    videofmt=args.videofmt)
+                                    videofmt=args.videofmt,
+                                    headless=args.headless)
 
 
 if __name__ == '__main__':
