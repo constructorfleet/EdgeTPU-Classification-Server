@@ -1,2 +1,4 @@
---extra-index-url https://google-coral.github.io/py-repo/ pycoral~=2.0
+--extra-index-url https://google-coral.github.io/py-repo/
 PyGObject~=3.42.2
+pycoral~=2.0.0
+CairoSVG~=2.5.2
