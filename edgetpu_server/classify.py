@@ -21,13 +21,11 @@ Choose different camera and input encoding
 python3 classify.py --videosrc /dev/video1 --videofmt jpeg
 """
 
-import argparse
-import os
 import time
 
 # from cairosvg import svg2png
 
-import edgetpu_server.gstreamer as gstreamer
+import edgetpu_server.utils.gstreamer as gstreamer
 from edgetpu_server.utils.svg import SVG
 from edgetpu_server.utils import avg_fps_counter, arg_parser
 from pycoral.utils.dataset import read_label_file

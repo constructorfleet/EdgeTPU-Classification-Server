@@ -30,13 +30,11 @@ python3 detect.py \
   --model ${TEST_DATA}/mobilenet_ssd_v2_coco_quant_postprocess_edgetpu.tflite \
   --labels ${TEST_DATA}/coco_labels.txt
 """
-import argparse
-import os
 import time
 
 # from cairosvg import svg2png
 
-import edgetpu_server.gstreamer as gstreamer
+import edgetpu_server.utils.gstreamer as gstreamer
 from edgetpu_server.utils.svg import SVG
 from edgetpu_server.utils import avg_fps_counter, arg_parser
 from pycoral.adapters.common import input_size
