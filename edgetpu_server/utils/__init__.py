@@ -1,7 +1,5 @@
-import argparse
 import collections
 import time
-from typing import Callable
 
 
 def avg_fps_counter(window_size):
@@ -16,35 +14,13 @@ def avg_fps_counter(window_size):
         yield len(window) / sum(window)
 
 
-def arg_parser(
-        program_name: str,
-        runner: Callable
-):
-    parser = argparse.ArgumentParser(program_name)
-    parser.add_argument('--model',
-                        help='.tflite model path')
-    parser.add_argument('--labels',
-                        help='label file path')
-    parser.add_argument('--top_k',
-                        type=int,
-                        default=3,
-                        help='number of categories with highest score to display')
-    parser.add_argument('--threshold',
-                        type=float,
-                        default=0.1,
-                        help='classifier score threshold')
-    parser.add_argument('--videosrc',
-                        help='Which video source to use.',
-                        default='/dev/video0')
-    parser.add_argument('--headless',
-                        type=bool,
-                        default=False,
-                        help='Run without displaying the video.')
-    parser.add_argument('--videofmt',
-                        default='raw',
-                        choices=['raw', 'h264', 'jpeg'],
-                        help='Input video format.')
-    args = parser.parse_args()
-
-    print('Loading {} with {} labels.'.format(args.model, args.labels))
-    runner(args)
+def get_dev_board_model():
+    try:
+        model = open('/sys/firmware/devicetree/base/model').read().lower()
+        if 'mx8mq' in model:
+            return 'mx8mq'
+        if 'mt8167' in model:
+            return 'mt8167'
+    except:
+        pass
+    return None

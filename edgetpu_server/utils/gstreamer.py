@@ -20,7 +20,9 @@ import gi
 # gi.require_version('Gst', '1.0')
 # gi.require_version('GstBase', '1.0')
 # gi.require_version('Gtk', '3.0')
-from gi.repository import GLib, GObject, Gst, GstBase, Gtk
+from gi.repository import GLib, Gst, Gtk
+
+from edgetpu_server.utils import get_dev_board_model
 
 Gst.init(None)
 
@@ -195,18 +197,6 @@ class GstPipeline:
         bus.set_sync_handler(on_bus_message_sync, self.overlaysink)
 
 
-def get_dev_board_model():
-    try:
-        model = open('/sys/firmware/devicetree/base/model').read().lower()
-        if 'mx8mq' in model:
-            return 'mx8mq'
-        if 'mt8167' in model:
-            return 'mt8167'
-    except:
-        pass
-    return None
-
-
 def run_pipeline(user_function,
                  src_size,
                  appsink_size,
@@ -214,20 +204,20 @@ def run_pipeline(user_function,
                  videofmt='raw',
                  headless=False):
     if videofmt == 'h264':
-        SRC_CAPS = 'video/x-h264,width={width},height={height},framerate=30/1'
+        source_capabilities = 'video/x-h264,width={width},height={height},framerate=30/1'
     elif videofmt == 'jpeg':
-        SRC_CAPS = 'image/jpeg,width={width},height={height},framerate=30/1'
+        source_capabilities = 'image/jpeg,width={width},height={height},framerate=30/1'
     else:
-        SRC_CAPS = 'video/x-raw,width={width},height={height},framerate=30/1'
+        source_capabilities = 'video/x-raw,width={width},height={height},framerate=30/1'
     if videosrc.startswith('/dev/video'):
-        PIPELINE = 'v4l2src device=%s ! {src_caps}' % videosrc
+        pipeline = 'v4l2src device=%s ! {src_caps}' % videosrc
     elif videosrc.startswith('http'):
-        PIPELINE = 'souphttpsrc location=%s' % videosrc
+        pipeline = 'souphttpsrc location=%s' % videosrc
     elif videosrc.startswith('rtsp'):
-        PIPELINE = 'rtspsrc location=%s' % videosrc
+        pipeline = 'rtspsrc location=%s' % videosrc
     else:
         demux = 'avidemux' if videosrc.endswith('avi') else 'qtdemux'
-        PIPELINE = """filesrc location=%s ! %s name=demux  demux.video_0
+        pipeline = """filesrc location=%s ! %s name=demux  demux.video_0
                     ! queue ! decodebin  ! videorate
                     ! videoconvert n-threads=4 ! videoscale n-threads=4
                     ! {src_caps} ! {leaky_q} """ % (videosrc, demux)
@@ -236,22 +226,26 @@ def run_pipeline(user_function,
     if headless:
         scale = min(appsink_size[0] / src_size[0], appsink_size[1] / src_size[1])
         scale = tuple(int(x * scale) for x in src_size)
-        scale_caps = 'video/x-raw,width={width},height={height}'.format(width=scale[0], height=scale[1])
-        PIPELINE += """ ! decodebin ! queue ! videoconvert ! videoscale
+        scale_caps = 'video/x-raw,width={width},height={height}'.format(
+            width=scale[0],
+            height=scale[1])
+        pipeline += """ ! decodebin ! queue ! videoconvert ! videoscale
         ! {scale_caps} ! videobox name=box autocrop=true ! {sink_caps} ! {sink_element}
         """
     elif coral:
         if 'mt8167' in coral:
-            PIPELINE += """ ! decodebin ! queue ! v4l2convert ! {scale_caps} !
+            pipeline += """ ! decodebin ! queue ! v4l2convert ! {scale_caps} !
               glupload ! glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA !
               tee name=t
                 t. ! queue ! glfilterbin filter=glbox name=glbox ! queue ! {sink_caps} ! {sink_element}
                 t. ! queue ! glsvgoverlay name=gloverlay sync=false ! glimagesink fullscreen=true
                      qos=false sync=false
             """
-            scale_caps = 'video/x-raw,format=BGRA,width={w},height={h}'.format(w=src_size[0], h=src_size[1])
+            scale_caps = 'video/x-raw,format=BGRA,width={width},height={height}'.format(
+                width=src_size[0],
+                height=src_size[1])
         else:
-            PIPELINE += """ ! decodebin ! glupload ! tee name=t
+            pipeline += """ ! decodebin ! glupload ! tee name=t
                 t. ! queue ! glfilterbin filter=glbox name=glbox ! {sink_caps} ! {sink_element}
                 t. ! queue ! glsvgoverlaysink name=overlaysink
             """
@@ -259,23 +253,31 @@ def run_pipeline(user_function,
     else:
         scale = min(appsink_size[0] / src_size[0], appsink_size[1] / src_size[1])
         scale = tuple(int(x * scale) for x in src_size)
-        scale_caps = 'video/x-raw,width={width},height={height}'.format(width=scale[0], height=scale[1])
-        PIPELINE += """ ! tee name=t
+        scale_caps = 'video/x-raw,width={width},height={height}'.format(
+            width=scale[0],
+            height=scale[1])
+        pipeline += """ ! tee name=t
             t. ! {leaky_q} ! videoconvert ! videoscale ! {scale_caps} ! videobox name=box autocrop=true
                ! {sink_caps} ! {sink_element}
             t. ! {leaky_q} ! videoconvert
                ! rsvgoverlay name=overlay ! videoconvert ! ximagesink sync=false
             """
 
-    SINK_ELEMENT = 'appsink name=appsink emit-signals=true max-buffers=1 drop=true'
-    SINK_CAPS = 'video/x-raw,format=RGB,width={width},height={height}'
-    LEAKY_Q = 'queue max-size-buffers=1 leaky=downstream'
+    sink_element = 'appsink name=appsink emit-signals=true max-buffers=1 drop=true'
+    sink_capabilities = 'video/x-raw,format=RGB,width={width},height={height}'
+    leaky_q = 'queue max-size-buffers=1 leaky=downstream'
 
-    src_caps = SRC_CAPS.format(width=src_size[0], height=src_size[1])
-    sink_caps = SINK_CAPS.format(width=appsink_size[0], height=appsink_size[1])
-    pipeline = PIPELINE.format(leaky_q=LEAKY_Q,
-                               src_caps=src_caps, sink_caps=sink_caps,
-                               sink_element=SINK_ELEMENT, scale_caps=scale_caps)
+    src_caps = source_capabilities.format(
+        width=src_size[0],
+        height=src_size[1])
+    sink_caps = sink_capabilities.format(
+        width=appsink_size[0],
+        height=appsink_size[1])
+    pipeline = pipeline.format(leaky_q=leaky_q,
+                               src_caps=src_caps,
+                               sink_caps=sink_caps,
+                               sink_element=sink_element,
+                               scale_caps=scale_caps)
 
     print('Gstreamer pipeline:\n', pipeline)
 
