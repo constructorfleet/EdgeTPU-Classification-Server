@@ -24,7 +24,7 @@ RUN echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" |
     python3-cairo-dev  \
     libcairo2-dev  \
     libglib2.0-dev \
-    libgirepository1.0-dev  \
+    libgirepository1.0-dev \
     python3-pycoral \
     x264  \
     libx264-dev \
